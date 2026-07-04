@@ -101,6 +101,9 @@ test-ydb: add-gowork
 test-starrocks: add-gowork
 	go test $(GO_TEST_FLAGS) ./internal/testing/integration -run='TestStarrocks' | tparse --follow -sort=elapsed
 
+test-oracle: add-gowork
+	go test $(GO_TEST_FLAGS) ./internal/testing/integration -run='TestOracle' | tparse --follow -sort=elapsed
+
 test-integration: add-gowork
 	go test $(GO_TEST_FLAGS) ./internal/testing/integration/... | tparse --follow -sort=elapsed -trimpath=auto -all
 

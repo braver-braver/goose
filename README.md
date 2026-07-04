@@ -93,7 +93,7 @@ Examples:
 
     goose postgres "user=postgres dbname=postgres sslmode=disable" status
     goose mysql "user:password@/dbname?parseTime=true" status
-    goose oracle "user/password@localhost:1521/ORCLPDB1" status
+    goose oracle "oracle://user:password@localhost:1521/ORCLPDB1" status
     goose spanner "projects/project/instances/instance/databases/database" status
     goose redshift "postgres://user:password@qwerty.us-east-1.redshift.amazonaws.com:5439/db" status
     goose tidb "user:password@/dbname?parseTime=true" status
@@ -233,10 +233,12 @@ Note: for MySQL and MariaDB
 be enabled. This is required when writing multiple queries separated by ';' characters in a single
 sql file.
 
-Note: for Oracle, the [godror](https://github.com/godror/godror) driver requires Oracle Instant
-Client. Set `LD_LIBRARY_PATH` (Linux) or `DYLD_LIBRARY_PATH` (macOS) to the Instant Client
-directory. Connection string format: `user/password@host:port/service_name`. Table and column names
-are case-insensitive (stored as uppercase). To exclude the Oracle driver from the binary, build with
+Note: for Oracle, goose uses the pure Go [go-ora](https://github.com/sijms/go-ora) driver, which
+does not require Oracle Instant Client. Connection string format:
+`oracle://user:password@host:port/service_name`. Table and column names are case-insensitive
+(stored as uppercase). PL/SQL blocks (e.g. `CREATE OR REPLACE PROCEDURE`, `BEGIN ... END;`) contain
+semicolons within them and must be annotated with `-- +goose StatementBegin` and
+`-- +goose StatementEnd`. To exclude the Oracle driver from the binary, build with
 `-tags='no_oracle'`.
 
 ## version

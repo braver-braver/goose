@@ -111,6 +111,26 @@ func TestMySQL(t *testing.T) {
 	testDatabase(t, database.DialectMySQL, db, "testdata/migrations/mysql")
 }
 
+func TestOracle(t *testing.T) {
+	t.Parallel()
+
+	db, cleanup, err := testdb.NewOracle()
+	require.NoError(t, err)
+	t.Cleanup(cleanup)
+	require.NoError(t, db.Ping())
+
+	testDatabase(t, database.DialectOracle, db, "testdata/migrations/oracle")
+
+	// Verify the values round-trip through Oracle NUMBER/VARCHAR2 columns, and exercise the
+	// PL/SQL procedure created by the last migration.
+	_, err = db.Exec(`BEGIN insert_repository('acme/widgets', 'acme', 'organization'); END;`)
+	require.NoError(t, err)
+	var count int64
+	err = db.QueryRow(`SELECT COUNT(*) FROM repos WHERE repo_full_name = :1`, "acme/widgets").Scan(&count)
+	require.NoError(t, err)
+	require.EqualValues(t, 1, count)
+}
+
 func TestTurso(t *testing.T) {
 	t.Parallel()
 
