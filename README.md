@@ -233,6 +233,12 @@ Note: for MySQL and MariaDB
 be enabled. This is required when writing multiple queries separated by ';' characters in a single
 sql file.
 
+Note: for Oracle, the [godror](https://github.com/godror/godror) driver requires Oracle Instant
+Client. Set `LD_LIBRARY_PATH` (Linux) or `DYLD_LIBRARY_PATH` (macOS) to the Instant Client
+directory. Connection string format: `user/password@host:port/service_name`. Table and column names
+are case-insensitive (stored as uppercase). To exclude the Oracle driver from the binary, build with
+`-tags='no_oracle'`.
+
 ## version
 
 Print the current version of the database:

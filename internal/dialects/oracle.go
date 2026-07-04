@@ -2,10 +2,13 @@ package dialects
 
 import (
 	"fmt"
+	"regexp"
 	"strings"
 
 	"github.com/pressly/goose/v3/database/dialect"
 )
+
+var validOracleIdentifier = regexp.MustCompile(`^[a-zA-Z_][a-zA-Z0-9_$#]*$`)
 
 // NewOracle returns a new [dialect.Querier] for Oracle dialect.
 func NewOracle() dialect.QuerierExtender {
@@ -55,8 +58,14 @@ func (o *oracle) GetLatestVersion(tableName string) string {
 func (o *oracle) TableExists(tableName string) string {
 	schemaName, tableName := parseOracleTableIdentifier(tableName)
 	if schemaName != "" {
+		if !validOracleIdentifier.MatchString(schemaName) || !validOracleIdentifier.MatchString(tableName) {
+			return ""
+		}
 		q := `SELECT CASE WHEN EXISTS (SELECT 1 FROM all_tables WHERE owner = '%s' AND table_name = '%s') THEN 1 ELSE 0 END FROM dual`
 		return fmt.Sprintf(q, strings.ToUpper(schemaName), strings.ToUpper(tableName))
+	}
+	if !validOracleIdentifier.MatchString(tableName) {
+		return ""
 	}
 	q := `SELECT CASE WHEN EXISTS (SELECT 1 FROM user_tables WHERE table_name = '%s') THEN 1 ELSE 0 END FROM dual`
 	return fmt.Sprintf(q, strings.ToUpper(tableName))
