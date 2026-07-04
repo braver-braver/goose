@@ -241,6 +241,13 @@ semicolons within them and must be annotated with `-- +goose StatementBegin` and
 `-- +goose StatementEnd`. To exclude the Oracle driver from the binary, build with
 `-tags='no_oracle'`.
 
+**Important**: Oracle implicitly commits on every DDL statement, so the transaction goose wraps
+around a migration cannot roll DDL back. If a migration containing multiple DDL statements fails
+partway, the earlier statements are already committed while the version record is not, and
+re-running the migration will fail (e.g. `ORA-00955: name is already used by an existing object`)
+until the schema is fixed manually. **Keep each Oracle migration file to a single DDL statement.**
+Migrations containing only DML (INSERT/UPDATE/DELETE) are unaffected and roll back normally.
+
 To prevent multiple instances from applying migrations concurrently, the [Provider] supports an
 Oracle session locker based on `DBMS_LOCK` (requires `GRANT EXECUTE ON SYS.DBMS_LOCK TO <user>`):
 
