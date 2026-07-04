@@ -248,6 +248,10 @@ type config struct {
 	tableName string
 	store     database.Store
 
+	// dialect is the dialect passed to NewProvider. It is empty for DialectCustom (custom
+	// stores) and is used for dialect-specific statement handling at execution time.
+	dialect Dialect
+
 	verbose         bool
 	excludePaths    map[string]bool
 	excludeVersions map[int64]bool

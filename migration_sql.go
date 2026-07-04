@@ -5,6 +5,8 @@ import (
 	"database/sql"
 	"fmt"
 	"regexp"
+
+	"github.com/pressly/goose/v3/internal/dialects"
 )
 
 // Run a migration specified in raw SQL.
@@ -35,6 +37,7 @@ func runSQLMigration(
 		}
 
 		for _, query := range statements {
+			query = normalizeStatement(query)
 			verboseInfo("Executing statement: %s\n", clearStatement(query))
 			if _, err := tx.ExecContext(ctx, query); err != nil {
 				verboseInfo("Rollback transaction")
@@ -69,6 +72,7 @@ func runSQLMigration(
 
 	// NO TRANSACTION.
 	for _, query := range statements {
+		query = normalizeStatement(query)
 		verboseInfo("Executing statement: %s", clearStatement(query))
 		if _, err := db.ExecContext(ctx, query); err != nil {
 			return fmt.Errorf("failed to execute SQL query %q: %w", clearStatement(query), err)
@@ -87,6 +91,16 @@ func runSQLMigration(
 	}
 
 	return nil
+}
+
+// normalizeStatement applies dialect-specific fixups to a parsed migration statement before
+// execution. Oracle rejects the trailing semicolon that the SQL parser preserves on plain
+// statements; all other dialects execute statements as parsed.
+func normalizeStatement(query string) string {
+	if currentDialect == DialectOracle {
+		return dialects.NormalizeOracleStatement(query)
+	}
+	return query
 }
 
 const (

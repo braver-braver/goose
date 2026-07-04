@@ -112,6 +112,67 @@ func TestOracleTableExists(t *testing.T) {
 	})
 }
 
+func TestNormalizeOracleStatement(t *testing.T) {
+	tests := []struct {
+		name  string
+		input string
+		want  string
+	}{
+		{
+			name:  "plain statement trailing semicolon stripped",
+			input: "CREATE TABLE owners (owner_id NUMBER);",
+			want:  "CREATE TABLE owners (owner_id NUMBER)",
+		},
+		{
+			name:  "trailing whitespace after semicolon stripped",
+			input: "DROP TABLE owners;\n",
+			want:  "DROP TABLE owners",
+		},
+		{
+			name:  "no trailing semicolon unchanged",
+			input: "DELETE FROM owners",
+			want:  "DELETE FROM owners",
+		},
+		{
+			name:  "anonymous plsql block preserved",
+			input: "BEGIN\n  NULL;\nEND;",
+			want:  "BEGIN\n  NULL;\nEND;",
+		},
+		{
+			name:  "declare block preserved",
+			input: "DECLARE\n  v NUMBER;\nBEGIN\n  NULL;\nEND;",
+			want:  "DECLARE\n  v NUMBER;\nBEGIN\n  NULL;\nEND;",
+		},
+		{
+			name:  "create or replace procedure preserved",
+			input: "CREATE OR REPLACE PROCEDURE p AS\nBEGIN\n  NULL;\nEND p;",
+			want:  "CREATE OR REPLACE PROCEDURE p AS\nBEGIN\n  NULL;\nEND p;",
+		},
+		{
+			name:  "create trigger preserved",
+			input: "CREATE TRIGGER trg BEFORE INSERT ON owners FOR EACH ROW\nBEGIN\n  NULL;\nEND;",
+			want:  "CREATE TRIGGER trg BEFORE INSERT ON owners FOR EACH ROW\nBEGIN\n  NULL;\nEND;",
+		},
+		{
+			name:  "create table is not plsql",
+			input: "CREATE TABLE t (c NUMBER);",
+			want:  "CREATE TABLE t (c NUMBER)",
+		},
+		{
+			name:  "lowercase plsql preserved",
+			input: "begin\n  null;\nend;",
+			want:  "begin\n  null;\nend;",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := NormalizeOracleStatement(tt.input); got != tt.want {
+				t.Errorf("got %q, want %q", got, tt.want)
+			}
+		})
+	}
+}
+
 func TestParseOracleTableIdentifier(t *testing.T) {
 	tests := []struct {
 		input      string

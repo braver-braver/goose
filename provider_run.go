@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/pressly/goose/v3/database"
+	"github.com/pressly/goose/v3/internal/dialects"
 	"github.com/pressly/goose/v3/internal/sqlparser"
 	"github.com/sethvargo/go-retry"
 	"go.uber.org/multierr"
@@ -518,6 +519,9 @@ func (p *Provider) runSQL(ctx context.Context, db database.DBTxConn, m *Migratio
 		statements = m.sql.Down
 	}
 	for _, stmt := range statements {
+		if p.cfg.dialect == DialectOracle {
+			stmt = dialects.NormalizeOracleStatement(stmt)
+		}
 		p.logf(ctx,
 			fmt.Sprintf("Executing statement: %s", stmt),
 			"executing statement",

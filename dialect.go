@@ -34,9 +34,15 @@ const (
 
 func init() {
 	store, _ = legacystore.NewStore(DialectPostgres)
+	currentDialect = DialectPostgres
 }
 
-var store legacystore.Store
+var (
+	store legacystore.Store
+	// currentDialect mirrors the dialect backing the package-level store. It is used for
+	// dialect-specific statement handling at execution time.
+	currentDialect Dialect
+)
 
 // SetDialect sets the dialect to use for the goose package.
 func SetDialect(s string) error {
@@ -73,5 +79,8 @@ func SetDialect(s string) error {
 	}
 	var err error
 	store, err = legacystore.NewStore(d)
+	if err == nil {
+		currentDialect = d
+	}
 	return err
 }

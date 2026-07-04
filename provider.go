@@ -89,6 +89,7 @@ func NewProvider(dialect Dialect, db *sql.DB, fsys fs.FS, opts ...ProviderOption
 	if cfg.slogger == nil && cfg.logger == nil {
 		cfg.logger = &stdLogger{}
 	}
+	cfg.dialect = dialect
 	var store database.Store
 	if dialect != "" {
 		var err error

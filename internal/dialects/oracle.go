@@ -10,6 +10,20 @@ import (
 
 var validOracleIdentifier = regexp.MustCompile(`^[a-zA-Z_][a-zA-Z0-9_$#]*$`)
 
+// oraclePLSQLPrefix matches statements that are PL/SQL source (anonymous blocks and stored
+// program units). Their trailing semicolon is part of the PL/SQL source and must be preserved.
+var oraclePLSQLPrefix = regexp.MustCompile(`(?is)^\s*(BEGIN|DECLARE|CREATE(\s+OR\s+REPLACE)?(\s+(EDITIONABLE|NONEDITIONABLE))?\s+(PROCEDURE|FUNCTION|TRIGGER|PACKAGE|TYPE|LIBRARY))\b`)
+
+// NormalizeOracleStatement prepares a parsed migration statement for execution against Oracle.
+// Oracle rejects a trailing semicolon on regular SQL statements (ORA-00911: invalid character),
+// but requires it for PL/SQL, so the terminator is stripped only from non-PL/SQL statements.
+func NormalizeOracleStatement(stmt string) string {
+	if oraclePLSQLPrefix.MatchString(stmt) {
+		return stmt
+	}
+	return strings.TrimRight(stmt, " \t\r\n;")
+}
+
 // NewOracle returns a new [dialect.Querier] for Oracle dialect.
 func NewOracle() dialect.QuerierExtender {
 	return &oracle{}
