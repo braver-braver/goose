@@ -97,5 +97,18 @@ func newOracle(opts ...OptionsFunc) (*sql.DB, func(), error) {
 	); err != nil {
 		return nil, cleanup, fmt.Errorf("could not connect to docker database: %v", err)
 	}
+	// Grant EXECUTE on DBMS_LOCK to the app user so the Oracle session locker can be exercised.
+	// This mirrors the grant a DBA performs in a real deployment. Granting on a SYS-owned
+	// package requires connecting AS SYSDBA.
+	sysDSN := go_ora.BuildUrl("localhost", port, ORACLE_SERVICE, "sys", ORACLE_SYS_PASSWORD,
+		map[string]string{"dba privilege": "sysdba"})
+	sysDB, err := sql.Open("oracle", sysDSN)
+	if err != nil {
+		return nil, cleanup, fmt.Errorf("failed to open sysdba connection: %v", err)
+	}
+	defer sysDB.Close()
+	if _, err := sysDB.Exec("GRANT EXECUTE ON SYS.DBMS_LOCK TO " + ORACLE_USER); err != nil {
+		return nil, cleanup, fmt.Errorf("failed to grant execute on DBMS_LOCK: %v", err)
+	}
 	return db, cleanup, nil
 }

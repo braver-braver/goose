@@ -241,6 +241,16 @@ semicolons within them and must be annotated with `-- +goose StatementBegin` and
 `-- +goose StatementEnd`. To exclude the Oracle driver from the binary, build with
 `-tags='no_oracle'`.
 
+To prevent multiple instances from applying migrations concurrently, the [Provider] supports an
+Oracle session locker based on `DBMS_LOCK` (requires `GRANT EXECUTE ON SYS.DBMS_LOCK TO <user>`):
+
+```go
+locker, err := lock.NewOracleSessionLocker()
+provider, err := goose.NewProvider(goose.DialectOracle, db, fsys,
+    goose.WithSessionLocker(locker),
+)
+```
+
 ## version
 
 Print the current version of the database:
