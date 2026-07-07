@@ -3,7 +3,7 @@ package dialects
 import (
 	"fmt"
 
-	"github.com/pressly/goose/v3/database/dialect"
+	"github.com/braver-braver/goose/v3/database/dialect"
 )
 
 // NewSqlserver returns a [dialect.Querier] for SQL Server dialect.

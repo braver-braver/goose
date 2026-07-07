@@ -6,8 +6,8 @@ import (
 	"testing"
 	"testing/fstest"
 
-	"github.com/pressly/goose/v3"
-	"github.com/pressly/goose/v3/database"
+	"github.com/braver-braver/goose/v3"
+	"github.com/braver-braver/goose/v3/database"
 	"github.com/stretchr/testify/require"
 	_ "modernc.org/sqlite"
 )

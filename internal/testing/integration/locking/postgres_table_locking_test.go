@@ -8,11 +8,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/pressly/goose/v3"
-	"github.com/pressly/goose/v3/internal/testing/testdb"
-	"github.com/pressly/goose/v3/lock"
-	"github.com/pressly/goose/v3/lock/locktesting"
-	"github.com/pressly/goose/v3/testdata"
+	"github.com/braver-braver/goose/v3"
+	"github.com/braver-braver/goose/v3/internal/testing/testdb"
+	"github.com/braver-braver/goose/v3/lock"
+	"github.com/braver-braver/goose/v3/lock/locktesting"
+	"github.com/braver-braver/goose/v3/testdata"
 	"github.com/stretchr/testify/require"
 )
 

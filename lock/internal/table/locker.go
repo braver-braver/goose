@@ -12,7 +12,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/pressly/goose/v3/lock/internal/store"
+	"github.com/braver-braver/goose/v3/lock/internal/store"
 	"github.com/sethvargo/go-retry"
 )
 

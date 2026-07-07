@@ -7,8 +7,8 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/pressly/goose/v3/lock/internal/store"
-	"github.com/pressly/goose/v3/lock/internal/table"
+	"github.com/braver-braver/goose/v3/lock/internal/store"
+	"github.com/braver-braver/goose/v3/lock/internal/table"
 	"github.com/sethvargo/go-retry"
 )
 

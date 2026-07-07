@@ -3,7 +3,7 @@ package dialects
 import (
 	"fmt"
 
-	"github.com/pressly/goose/v3/database/dialect"
+	"github.com/braver-braver/goose/v3/database/dialect"
 )
 
 // NewVertica returns a new [dialect.Querier] for Vertica dialect.

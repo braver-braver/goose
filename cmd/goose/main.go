@@ -19,8 +19,8 @@ import (
 
 	"github.com/joho/godotenv"
 	"github.com/mfridman/xflag"
-	"github.com/pressly/goose/v3"
-	"github.com/pressly/goose/v3/internal/migrationstats"
+	"github.com/braver-braver/goose/v3"
+	"github.com/braver-braver/goose/v3/internal/migrationstats"
 )
 
 var (

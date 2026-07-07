@@ -6,7 +6,7 @@ import (
 	"log/slog"
 	"time"
 
-	"github.com/pressly/goose/v3/lock/internal/table"
+	"github.com/braver-braver/goose/v3/lock/internal/table"
 )
 
 const (

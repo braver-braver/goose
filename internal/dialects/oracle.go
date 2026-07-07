@@ -5,7 +5,7 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/pressly/goose/v3/database/dialect"
+	"github.com/braver-braver/goose/v3/database/dialect"
 )
 
 var validOracleIdentifier = regexp.MustCompile(`^[a-zA-Z_][a-zA-Z0-9_$#]*$`)

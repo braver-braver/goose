@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/pressly/goose/v3/database/dialect"
+	"github.com/braver-braver/goose/v3/database/dialect"
 )
 
 // NewPostgres returns a new [dialect.Querier] for PostgreSQL dialect.

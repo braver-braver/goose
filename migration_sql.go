@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"regexp"
 
-	"github.com/pressly/goose/v3/internal/dialects"
+	"github.com/braver-braver/goose/v3/internal/dialects"
 )
 
 // Run a migration specified in raw SQL.

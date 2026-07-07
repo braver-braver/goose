@@ -13,9 +13,9 @@ import (
 	"slices"
 	"time"
 
-	"github.com/pressly/goose/v3/database"
-	"github.com/pressly/goose/v3/internal/dialects"
-	"github.com/pressly/goose/v3/internal/sqlparser"
+	"github.com/braver-braver/goose/v3/database"
+	"github.com/braver-braver/goose/v3/internal/dialects"
+	"github.com/braver-braver/goose/v3/internal/sqlparser"
 	"github.com/sethvargo/go-retry"
 	"go.uber.org/multierr"
 )
