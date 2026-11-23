@@ -2,9 +2,11 @@ package testdb
 
 import (
 	"database/sql"
+	"errors"
 	"fmt"
 	"log"
 	"strconv"
+	"strings"
 	"time"
 
 	_ "github.com/go-sql-driver/mysql"
@@ -93,11 +95,60 @@ func newStarrocks(opts ...OptionsFunc) (*sql.DB, func(), error) {
 			return fmt.Errorf("could not set default initial database: %v", err)
 		}
 
-		return db.Ping()
+		if err := db.Ping(); err != nil {
+			return err
+		}
+		// The frontend can accept connections before a backend is available for DDL.
+		return checkStarrocksBackendReady(db)
 	},
 	); err != nil {
 		return nil, cleanup, fmt.Errorf("could not connect to docker database: %v", err)
 	}
 
 	return db, cleanup, nil
+}
+
+
+// checkStarrocksBackendReady waits for an alive backend, not merely the SQL frontend.
+// StarRocks may accept connections and CREATE DATABASE while CREATE TABLE still fails
+// with "Cluster has no available capacity".
+func checkStarrocksBackendReady(db *sql.DB) error {
+	rows, err := db.Query("SHOW BACKENDS")
+	if err != nil {
+		return fmt.Errorf("query StarRocks backends: %w", err)
+	}
+	defer rows.Close()
+
+	columns, err := rows.Columns()
+	if err != nil {
+		return fmt.Errorf("read StarRocks backend columns: %w", err)
+	}
+	aliveColumn := -1
+	for i, column := range columns {
+		if strings.EqualFold(column, "Alive") {
+			aliveColumn = i
+			break
+		}
+	}
+	if aliveColumn < 0 {
+		return errors.New("StarRocks SHOW BACKENDS response lacks Alive column")
+	}
+	values := make([]sql.RawBytes, len(columns))
+	targets := make([]any, len(columns))
+	for i := range values {
+		targets[i] = &values[i]
+	}
+	for rows.Next() {
+		if err := rows.Scan(targets...); err != nil {
+			return fmt.Errorf("scan StarRocks backend: %w", err)
+		}
+		alive := string(values[aliveColumn])
+		if strings.EqualFold(alive, "true") || alive == "1" {
+			return nil
+		}
+	}
+	if err := rows.Err(); err != nil {
+		return fmt.Errorf("iterate StarRocks backends: %w", err)
+	}
+	return errors.New("StarRocks has no alive backend yet")
 }
