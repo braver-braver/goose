@@ -1,4 +1,4 @@
-module github.com/pressly/goose/v3/internal/testing
+module github.com/braver-braver/goose/v3/internal/testing
 
 go 1.25.8
 
@@ -9,7 +9,7 @@ require (
 	github.com/googleapis/go-sql-spanner v1.26.0
 	github.com/jackc/pgx/v5 v5.10.0
 	github.com/ory/dockertest/v3 v3.12.0
-	github.com/pressly/goose/v3 v3.27.2
+	github.com/braver-braver/goose/v3 v3.27.2
 	github.com/stretchr/testify v1.11.1
 	github.com/tursodatabase/libsql-client-go v0.0.0-20260528064733-9d5d30a29a60
 	github.com/ydb-platform/ydb-go-sdk/v3 v3.144.6
@@ -118,3 +118,6 @@ require (
 	google.golang.org/protobuf v1.36.11 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
+
+// Use the local fork when testing this nested module outside a go.work workspace.
+replace github.com/braver-braver/goose/v3 => ../..

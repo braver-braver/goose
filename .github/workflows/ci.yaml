@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - main
+      - oracle-support
   pull_request:
   workflow_dispatch:
 
