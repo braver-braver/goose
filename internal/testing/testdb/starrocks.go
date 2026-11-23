@@ -108,7 +108,6 @@ func newStarrocks(opts ...OptionsFunc) (*sql.DB, func(), error) {
 	return db, cleanup, nil
 }
 
-
 // checkStarrocksBackendReady waits for an alive backend, not merely the SQL frontend.
 // StarRocks may accept connections and CREATE DATABASE while CREATE TABLE still fails
 // with "Cluster has no available capacity".
