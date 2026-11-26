@@ -17,10 +17,10 @@ import (
 	"text/tabwriter"
 	"text/template"
 
-	"github.com/joho/godotenv"
-	"github.com/mfridman/xflag"
 	"github.com/braver-braver/goose/v3"
 	"github.com/braver-braver/goose/v3/internal/migrationstats"
+	"github.com/joho/godotenv"
+	"github.com/mfridman/xflag"
 )
 
 var (

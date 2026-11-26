@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - main
+      - oracle-support
   pull_request:
   workflow_dispatch:
 
@@ -14,7 +15,7 @@ concurrency:
 jobs:
   test:
     name: Run integration tests
-    timeout-minutes: 10
+    timeout-minutes: 20
     runs-on: ubuntu-latest
 
     steps:
@@ -31,5 +32,6 @@ jobs:
           chmod +x $HOME/.local/bin/tparse
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
       - name: Run full integration tests
+        # Run Docker-backed database suites serially to avoid starving StarRocks BE.
         run: |
-          make test-integration
+          make test-integration GO_TEST_FLAGS="-race -count=1 -v -timeout=15m -json -p=1 -parallel=1"

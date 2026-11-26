@@ -2,9 +2,11 @@ package testdb
 
 import (
 	"database/sql"
+	"errors"
 	"fmt"
 	"log"
 	"strconv"
+	"strings"
 	"time"
 
 	_ "github.com/go-sql-driver/mysql"
@@ -71,33 +73,87 @@ func newStarrocks(opts ...OptionsFunc) (*sql.DB, func(), error) {
 		container.GetPort("9030/tcp"), // Fetch port dynamically assigned to container,
 		"",
 	)
-	var db *sql.DB
-
-	// Exponential backoff-retry, because the application in the container
-	// might not be ready to accept connections yet. Add an extra sleep
-	// because container take much longer to startup.
-	pool.MaxWait = time.Minute * 2
-	if err := pool.Retry(func() error {
-		var err error
-		db, err = sql.Open("mysql", dsn)
-		if err != nil {
-			return err
-		}
-
-		_, err = db.Exec("CREATE DATABASE IF NOT EXISTS " + STARROCKS_INIT_DB)
-		if err != nil {
-			return fmt.Errorf("could not create initial database: %v", err)
-		}
-		_, err = db.Exec("USE " + STARROCKS_INIT_DB)
-		if err != nil {
-			return fmt.Errorf("could not set default initial database: %v", err)
-		}
-
-		return db.Ping()
-	},
-	); err != nil {
-		return nil, cleanup, fmt.Errorf("could not connect to docker database: %v", err)
+	db, err := sql.Open("mysql", dsn)
+	if err != nil {
+		cleanup()
+		return nil, nil, fmt.Errorf("open StarRocks database: %w", err)
 	}
 
-	return db, cleanup, nil
+	// The SQL frontend can start accepting connections before a backend is ready.
+	// Reuse the same connection pool while waiting.
+	pool.MaxWait = 2 * time.Minute
+	if err := waitForStarrocks(db, pool.Retry); err != nil {
+		cleanup()
+		return nil, nil, fmt.Errorf("could not connect to docker database: %w", err)
+	}
+
+	return db, func() {
+		if err := db.Close(); err != nil {
+			log.Printf("failed to close StarRocks database: %v", err)
+		}
+		cleanup()
+	}, nil
+}
+
+func waitForStarrocks(db *sql.DB, retry func(func() error) error) error {
+	err := retry(func() error {
+		if _, err := db.Exec("CREATE DATABASE IF NOT EXISTS " + STARROCKS_INIT_DB); err != nil {
+			return fmt.Errorf("could not create initial database: %w", err)
+		}
+		if _, err := db.Exec("USE " + STARROCKS_INIT_DB); err != nil {
+			return fmt.Errorf("could not set default initial database: %w", err)
+		}
+		if err := db.Ping(); err != nil {
+			return err
+		}
+		return checkStarrocksBackendReady(db)
+	})
+	if err != nil {
+		return errors.Join(err, db.Close())
+	}
+	return nil
+}
+
+// checkStarrocksBackendReady waits for an alive backend, not merely the SQL frontend.
+// StarRocks may accept connections and CREATE DATABASE while CREATE TABLE still fails
+// with "Cluster has no available capacity".
+func checkStarrocksBackendReady(db *sql.DB) error {
+	rows, err := db.Query("SHOW BACKENDS")
+	if err != nil {
+		return fmt.Errorf("query StarRocks backends: %w", err)
+	}
+	defer rows.Close()
+
+	columns, err := rows.Columns()
+	if err != nil {
+		return fmt.Errorf("read StarRocks backend columns: %w", err)
+	}
+	aliveColumn := -1
+	for i, column := range columns {
+		if strings.EqualFold(column, "Alive") {
+			aliveColumn = i
+			break
+		}
+	}
+	if aliveColumn < 0 {
+		return errors.New("StarRocks SHOW BACKENDS response lacks Alive column")
+	}
+	values := make([]sql.RawBytes, len(columns))
+	targets := make([]any, len(columns))
+	for i := range values {
+		targets[i] = &values[i]
+	}
+	for rows.Next() {
+		if err := rows.Scan(targets...); err != nil {
+			return fmt.Errorf("scan StarRocks backend: %w", err)
+		}
+		alive := string(values[aliveColumn])
+		if strings.EqualFold(alive, "true") || alive == "1" {
+			return nil
+		}
+	}
+	if err := rows.Err(); err != nil {
+		return fmt.Errorf("iterate StarRocks backends: %w", err)
+	}
+	return errors.New("StarRocks has no alive backend yet")
 }
