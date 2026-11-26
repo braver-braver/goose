@@ -73,39 +73,45 @@ func newStarrocks(opts ...OptionsFunc) (*sql.DB, func(), error) {
 		container.GetPort("9030/tcp"), // Fetch port dynamically assigned to container,
 		"",
 	)
-	var db *sql.DB
+	db, err := sql.Open("mysql", dsn)
+	if err != nil {
+		cleanup()
+		return nil, nil, fmt.Errorf("open StarRocks database: %w", err)
+	}
 
-	// Exponential backoff-retry, because the application in the container
-	// might not be ready to accept connections yet. Add an extra sleep
-	// because container take much longer to startup.
-	pool.MaxWait = time.Minute * 2
-	if err := pool.Retry(func() error {
-		var err error
-		db, err = sql.Open("mysql", dsn)
-		if err != nil {
-			return err
-		}
+	// The SQL frontend can start accepting connections before a backend is ready.
+	// Reuse the same connection pool while waiting.
+	pool.MaxWait = 2 * time.Minute
+	if err := waitForStarrocks(db, pool.Retry); err != nil {
+		cleanup()
+		return nil, nil, fmt.Errorf("could not connect to docker database: %w", err)
+	}
 
-		_, err = db.Exec("CREATE DATABASE IF NOT EXISTS " + STARROCKS_INIT_DB)
-		if err != nil {
-			return fmt.Errorf("could not create initial database: %v", err)
+	return db, func() {
+		if err := db.Close(); err != nil {
+			log.Printf("failed to close StarRocks database: %v", err)
 		}
-		_, err = db.Exec("USE " + STARROCKS_INIT_DB)
-		if err != nil {
-			return fmt.Errorf("could not set default initial database: %v", err)
-		}
+		cleanup()
+	}, nil
+}
 
+func waitForStarrocks(db *sql.DB, retry func(func() error) error) error {
+	err := retry(func() error {
+		if _, err := db.Exec("CREATE DATABASE IF NOT EXISTS " + STARROCKS_INIT_DB); err != nil {
+			return fmt.Errorf("could not create initial database: %w", err)
+		}
+		if _, err := db.Exec("USE " + STARROCKS_INIT_DB); err != nil {
+			return fmt.Errorf("could not set default initial database: %w", err)
+		}
 		if err := db.Ping(); err != nil {
 			return err
 		}
-		// The frontend can accept connections before a backend is available for DDL.
 		return checkStarrocksBackendReady(db)
-	},
-	); err != nil {
-		return nil, cleanup, fmt.Errorf("could not connect to docker database: %v", err)
+	})
+	if err != nil {
+		return errors.Join(err, db.Close())
 	}
-
-	return db, cleanup, nil
+	return nil
 }
 
 // checkStarrocksBackendReady waits for an alive backend, not merely the SQL frontend.
