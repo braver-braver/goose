@@ -50,9 +50,15 @@ func NewOracleSessionLocker(opts ...SessionLockerOption) (SessionLocker, error) 
 		}
 	}
 	return &oracleSessionLocker{
-		lockID:      oracleUserLockID(cfg.lockID),
-		lockProbe:   cfg.lockProbe,
-		unlockProbe: cfg.unlockProbe,
+		lockID: oracleUserLockID(cfg.lockID),
+		retryLock: retry.WithMaxRetries(
+			cfg.lockProbe.failureThreshold,
+			retry.NewConstant(cfg.lockProbe.intervalDuration),
+		),
+		retryUnlock: retry.WithMaxRetries(
+			cfg.unlockProbe.failureThreshold,
+			retry.NewConstant(cfg.unlockProbe.intervalDuration),
+		),
 	}, nil
 }
 
@@ -63,14 +69,14 @@ func oracleUserLockID(lockID int64) int64 {
 
 type oracleSessionLocker struct {
 	lockID      int64
-	lockProbe   probe
-	unlockProbe probe
+	retryLock   retry.Backoff
+	retryUnlock retry.Backoff
 }
 
 var _ SessionLocker = (*oracleSessionLocker)(nil)
 
 func (l *oracleSessionLocker) SessionLock(ctx context.Context, conn *sql.Conn) error {
-	return retry.Do(ctx, l.lockProbe.backoff(), func(ctx context.Context) error {
+	return retry.Do(ctx, l.retryLock, func(ctx context.Context) error {
 		// Request an exclusive user lock without waiting (timeout => 0), retrying in Go, which
 		// mirrors the pg_try_advisory_lock behavior of the Postgres session locker.
 		q := `BEGIN :1 := SYS.DBMS_LOCK.REQUEST(id => :2, lockmode => SYS.DBMS_LOCK.X_MODE, timeout => 0, release_on_commit => FALSE); END;`
@@ -94,7 +100,7 @@ func (l *oracleSessionLocker) SessionLock(ctx context.Context, conn *sql.Conn) e
 }
 
 func (l *oracleSessionLocker) SessionUnlock(ctx context.Context, conn *sql.Conn) error {
-	return retry.Do(ctx, l.unlockProbe.backoff(), func(ctx context.Context) error {
+	return retry.Do(ctx, l.retryUnlock, func(ctx context.Context) error {
 		q := `BEGIN :1 := SYS.DBMS_LOCK.RELEASE(id => :2); END;`
 		var status int64
 		if _, err := conn.ExecContext(ctx, q, sql.Out{Dest: &status}, l.lockID); err != nil {
