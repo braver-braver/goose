@@ -3,6 +3,8 @@ package lock
 import (
 	"errors"
 	"time"
+
+	"github.com/sethvargo/go-retry"
 )
 
 const (
@@ -87,6 +89,14 @@ type probe struct {
 	intervalDuration time.Duration
 	// Number of times to retry the probe.
 	failureThreshold uint64
+}
+
+// backoff creates a fresh retry budget for each lock or unlock call.
+func (p probe) backoff() retry.Backoff {
+	constant := retry.BackoffFunc(func() (time.Duration, bool) {
+		return p.intervalDuration, false
+	})
+	return retry.WithMaxRetries(p.failureThreshold, constant)
 }
 
 var _ SessionLockerOption = (sessionLockerConfigFunc)(nil)
