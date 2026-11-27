@@ -2,16 +2,28 @@
 
 <img align="right" width="125" src="assets/goose_logo.png">
 
-[![Goose
-CI](https://github.com/pressly/goose/actions/workflows/ci.yaml/badge.svg)](https://github.com/pressly/goose/actions/workflows/ci.yaml)
-[![Go
+[![Oracle branch
+CI](https://github.com/braver-braver/goose/actions/workflows/ci.yaml/badge.svg?branch=oracle-support)](https://github.com/braver-braver/goose/actions/workflows/ci.yaml?query=branch%3Aoracle-support)
+[![Upstream Go
 Reference](https://pkg.go.dev/badge/github.com/pressly/goose/v3.svg)](https://pkg.go.dev/github.com/pressly/goose/v3)
-[![Go Report
+[![Upstream Go Report
 Card](https://goreportcard.com/badge/github.com/pressly/goose/v3)](https://goreportcard.com/report/github.com/pressly/goose/v3)
 
 Goose is a database migration tool. Both a CLI and a library.
 
 Manage your **database schema** by creating incremental SQL changes or Go functions.
+
+## Oracle fork maintenance
+
+This is the Oracle-support branch of [pressly/goose](https://github.com/pressly/goose).
+The fork's `main` branch mirrors upstream without Oracle-specific changes. The
+`oracle-support` branch maintains Oracle support and keeps the consumer module path
+`github.com/braver-braver/goose/v3`. Upstream updates are integrated into the Oracle
+branch through reviewed, tested pull requests; Oracle-specific changes are not merged
+back into the fork's `main`.
+
+The public CI integration tests use Oracle Database Free 23ai; Oracle Database 19c
+compatibility must be verified separately before deploying an upgrade.
 
 #### Features
 
@@ -28,10 +40,18 @@ Manage your **database schema** by creating incremental SQL changes or Go functi
 # Install
 
 ```shell
-go install github.com/pressly/goose/v3/cmd/goose@latest
+go install github.com/braver-braver/goose/v3/cmd/goose@oracle-support
 ```
 
-This will install the `goose` binary to your `$GOPATH/bin` directory.
+This will install the Oracle-enabled `goose` binary to your `$GOPATH/bin` directory.
+For applications using goose as a library:
+
+```shell
+go get github.com/braver-braver/goose/v3@oracle-support
+```
+
+For reproducible production builds, use a tested commit SHA or fork-specific version
+rather than the moving `oracle-support` branch.
 
 Binary too big? Build a lite version by excluding the drivers you don't need:
 
@@ -44,7 +64,7 @@ go build -tags='no_postgres no_mysql no_sqlite3 no_ydb' -o goose ./cmd/goose
 #   no_ydb
 ```
 
-For macOS users `goose` is available as a [Homebrew
+For macOS users, upstream `goose` (without the Oracle fork's changes) is available as a [Homebrew
 Formulae](https://formulae.brew.sh/formula/goose#default):
 
 ```shell
@@ -426,7 +446,7 @@ import (
     "database/sql"
     "embed"
 
-    "github.com/pressly/goose/v3"
+    "github.com/braver-braver/goose/v3"
 )
 
 //go:embed migrations/*.sql
@@ -456,7 +476,7 @@ structure.
 ## Go Migrations
 
 1. Create your own goose binary, see [example](./examples/go-migrations)
-2. Import `github.com/pressly/goose`
+2. Import `github.com/braver-braver/goose/v3`
 3. Register your migration functions
 4. Include your `migrations` package into Go build: in `main.go`, `import _ "github.com/me/myapp/migrations"`
 5. Run goose command, ie. `goose.Up(db *sql.DB, dir string)`
@@ -470,7 +490,7 @@ package migrations
 import (
 	"database/sql"
 
-	"github.com/pressly/goose/v3"
+	"github.com/braver-braver/goose/v3"
 )
 
 func init() {
