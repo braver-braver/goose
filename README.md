@@ -13,9 +13,6 @@ Goose is a database migration tool. Both a CLI and a library.
 
 Manage your **database schema** by creating incremental SQL changes or Go functions.
 
-> [!IMPORTANT]
-> This is the independently maintained **Oracle-support fork**. The [`main`](https://github.com/braver-braver/goose/tree/main) branch mirrors [`pressly/goose`](https://github.com/pressly/goose); this `oracle-support` branch contains separate Oracle functionality. See [Oracle fork maintenance](ORACLE_SUPPORT.md) for the correct installation path and branch policy.
-
 #### Features
 
 - Works against multiple databases:
@@ -34,15 +31,7 @@ Manage your **database schema** by creating incremental SQL changes or Go functi
 go install github.com/pressly/goose/v3/cmd/goose@latest
 ```
 
-This installs **upstream goose** to your `$GOPATH/bin` directory, not the Oracle-support fork.
-
-To install **this maintained Oracle fork** instead:
-
-```shell
-go install github.com/braver-braver/goose/v3/cmd/goose@oracle-support
-```
-
-For production systems, pin a reviewed commit instead of using the moving branch name. The Homebrew formula below also installs upstream goose, not this fork.
+This will install the `goose` binary to your `$GOPATH/bin` directory.
 
 Binary too big? Build a lite version by excluding the drivers you don't need:
 
