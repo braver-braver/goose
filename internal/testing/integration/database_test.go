@@ -2,6 +2,7 @@ package integration
 
 import (
 	"testing"
+	"testing/fstest"
 	"time"
 
 	"github.com/braver-braver/goose/v3"
@@ -129,6 +130,55 @@ func TestOracle(t *testing.T) {
 	err = db.QueryRow(`SELECT COUNT(*) FROM repos WHERE repo_full_name = :1`, "acme/widgets").Scan(&count)
 	require.NoError(t, err)
 	require.EqualValues(t, 1, count)
+
+	t.Run("failed_ddl_is_not_rolled_back", func(t *testing.T) {
+		ctx := t.Context()
+		fsys := fstest.MapFS{
+			"00001_failure.sql": {Data: []byte(`-- +goose Up
+CREATE TABLE goose_test_partial_ddl (id NUMBER PRIMARY KEY);
+CREATE TABLE goose_test_partial_ddl (id NUMBER PRIMARY KEY);
+-- +goose Down
+DROP TABLE goose_test_partial_ddl;`)},
+		}
+		p, err := goose.NewProvider(database.DialectOracle, db, fsys,
+			goose.WithTableName("goose_test_ddl_version"))
+		require.NoError(t, err)
+		_, err = p.Up(ctx)
+		require.ErrorContains(t, err, "ORA-00955")
+		version, err := p.GetDBVersion(ctx)
+		require.NoError(t, err)
+		require.Zero(t, version, "failed migration must not be recorded")
+		var count int
+		err = db.QueryRowContext(ctx,
+			`SELECT COUNT(*) FROM user_tables WHERE table_name = :1`,
+			"GOOSE_TEST_PARTIAL_DDL").Scan(&count)
+		require.NoError(t, err)
+		require.Equal(t, 1, count, "the first DDL statement was implicitly committed")
+	})
+	t.Run("failed_dml_is_rolled_back", func(t *testing.T) {
+		ctx := t.Context()
+		_, err := db.ExecContext(ctx, `CREATE TABLE goose_test_dml_rollback (id NUMBER PRIMARY KEY)`)
+		require.NoError(t, err)
+		fsys := fstest.MapFS{
+			"00001_failure.sql": {Data: []byte(`-- +goose Up
+INSERT INTO goose_test_dml_rollback (id) VALUES (1);
+INSERT INTO goose_test_dml_rollback (id) VALUES (1);
+-- +goose Down
+DELETE FROM goose_test_dml_rollback;`)},
+		}
+		p, err := goose.NewProvider(database.DialectOracle, db, fsys,
+			goose.WithTableName("goose_test_dml_version"))
+		require.NoError(t, err)
+		_, err = p.Up(ctx)
+		require.ErrorContains(t, err, "ORA-00001")
+		version, err := p.GetDBVersion(ctx)
+		require.NoError(t, err)
+		require.Zero(t, version, "failed migration must not be recorded")
+		var count int
+		err = db.QueryRowContext(ctx, `SELECT COUNT(*) FROM goose_test_dml_rollback`).Scan(&count)
+		require.NoError(t, err)
+		require.Zero(t, count, "the first DML statement must be rolled back")
+	})
 }
 
 func TestTurso(t *testing.T) {

@@ -50,15 +50,9 @@ func NewOracleSessionLocker(opts ...SessionLockerOption) (SessionLocker, error) 
 		}
 	}
 	return &oracleSessionLocker{
-		lockID: oracleUserLockID(cfg.lockID),
-		retryLock: retry.WithMaxRetries(
-			cfg.lockProbe.failureThreshold,
-			retry.NewConstant(cfg.lockProbe.intervalDuration),
-		),
-		retryUnlock: retry.WithMaxRetries(
-			cfg.unlockProbe.failureThreshold,
-			retry.NewConstant(cfg.unlockProbe.intervalDuration),
-		),
+		lockID:      oracleUserLockID(cfg.lockID),
+		lockProbe:   cfg.lockProbe,
+		unlockProbe: cfg.unlockProbe,
 	}, nil
 }
 
@@ -69,14 +63,16 @@ func oracleUserLockID(lockID int64) int64 {
 
 type oracleSessionLocker struct {
 	lockID      int64
-	retryLock   retry.Backoff
-	retryUnlock retry.Backoff
+	lockProbe   probe
+	unlockProbe probe
 }
 
 var _ SessionLocker = (*oracleSessionLocker)(nil)
 
 func (l *oracleSessionLocker) SessionLock(ctx context.Context, conn *sql.Conn) error {
-	return retry.Do(ctx, l.retryLock, func(ctx context.Context) error {
+	// WithMaxRetries counts attempts for the lifetime of the backoff. Each call needs a fresh budget.
+	backoff := retry.WithMaxRetries(l.lockProbe.failureThreshold, retry.NewConstant(l.lockProbe.intervalDuration))
+	return retry.Do(ctx, backoff, func(ctx context.Context) error {
 		// Request an exclusive user lock without waiting (timeout => 0), retrying in Go, which
 		// mirrors the pg_try_advisory_lock behavior of the Postgres session locker.
 		q := `BEGIN :1 := SYS.DBMS_LOCK.REQUEST(id => :2, lockmode => SYS.DBMS_LOCK.X_MODE, timeout => 0, release_on_commit => FALSE); END;`
@@ -100,7 +96,8 @@ func (l *oracleSessionLocker) SessionLock(ctx context.Context, conn *sql.Conn) e
 }
 
 func (l *oracleSessionLocker) SessionUnlock(ctx context.Context, conn *sql.Conn) error {
-	return retry.Do(ctx, l.retryUnlock, func(ctx context.Context) error {
+	backoff := retry.WithMaxRetries(l.unlockProbe.failureThreshold, retry.NewConstant(l.unlockProbe.intervalDuration))
+	return retry.Do(ctx, backoff, func(ctx context.Context) error {
 		q := `BEGIN :1 := SYS.DBMS_LOCK.RELEASE(id => :2); END;`
 		var status int64
 		if _, err := conn.ExecContext(ctx, q, sql.Out{Dest: &status}, l.lockID); err != nil {
