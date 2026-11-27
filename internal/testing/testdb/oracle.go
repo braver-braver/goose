@@ -16,8 +16,8 @@ const (
 	// https://hub.docker.com/r/gvenzl/oracle-free
 	//
 	// There is no freely redistributable 19c image; Oracle Database Free (23ai) is used
-	// instead. The dialect queries and test migrations only rely on 12c+ features, so they
-	// are exercised identically.
+	// in CI. The migrations use 12c+ features, but separate Oracle 19c testing is
+	// still required before claiming production-version compatibility.
 	ORACLE_IMAGE   = "gvenzl/oracle-free"
 	ORACLE_VERSION = "23-slim-faststart"
 

@@ -82,18 +82,26 @@ func TestOracleSessionLocker(t *testing.T) {
 			lock.WithUnlockTimeout(1, 2), // 2 second timeout
 		)
 		require.NoError(t, err)
+		// sql.Conn.Close normally returns the connection to the pool, keeping the
+		// Oracle session alive. Disable idle pooling so Close terminates it.
+		db.SetMaxIdleConns(0)
+
 		ctx := context.Background()
 		conn1, err := db.Conn(ctx)
 		require.NoError(t, err)
-		require.NoError(t, locker.SessionLock(ctx, conn1))
-		// Close the owning connection WITHOUT unlocking; Oracle must release the lock when the
-		// session terminates, allowing another session to acquire it.
-		require.NoError(t, conn1.Close())
+		t.Cleanup(func() {
+			_ = conn1.Close()
+		})
+		// Hold a second connection before closing the owner, so it cannot reuse
+		// the owner's physical session and produce a false-positive test pass.
 		conn2, err := db.Conn(ctx)
 		require.NoError(t, err)
 		t.Cleanup(func() {
 			require.NoError(t, conn2.Close())
 		})
+		require.NoError(t, locker.SessionLock(ctx, conn1))
+		// Close the physical owner session WITHOUT explicitly unlocking DBMS_LOCK.
+		require.NoError(t, conn1.Close())
 		acquireCtx, cancel := context.WithTimeout(ctx, 15*time.Second)
 		defer cancel()
 		require.NoError(t, locker.SessionLock(acquireCtx, conn2))
